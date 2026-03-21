@@ -1,0 +1,96 @@
+name: CI-Infra-Plan
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool: Agents
+
+parameters:
+- name: environment
+  type: string
+  default: dev
+  values: [dev, test, qa, prod]
+
+variables:
+  sourcePath: "$(System.DefaultWorkingDirectory)/env/${{ parameters.environment }}"
+  serviceConnection: "sc-arjun-infra-pipe"
+  storageAccount: "arjunessrg1"
+  containerName: "tfstate"
+  stateFile: "${{ parameters.environment }}.terraform.tfstate"
+  resourceGroup: "arjun_ess_rg"
+
+stages:
+- stage: TerraformPlan
+  jobs:
+  - job: PlanJob
+    steps:
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 1.6.6
+
+    - task: TerraformTask@5
+      displayName: Terraform Init
+      inputs:
+        provider: azurerm
+        command: init
+        workingDirectory: "$(sourcePath)"
+        backendServiceArm: "$(serviceConnection)"
+        backendAzureRmResourceGroupName: "$(resourceGroup)"
+        backendAzureRmStorageAccountName: "$(storageAccount)"
+        backendAzureRmContainerName: "$(containerName)"
+        backendAzureRmKey: "$(stateFile)"
+
+    - script: terraform plan -out=tfplan
+      workingDirectory: "$(sourcePath)"
+      displayName: "Generate Plan"
+
+    - publish: "$(sourcePath)/tfplan"
+      artifact: terraform-plan
+
+# ================= MANUAL APPROVAL =================
+- stage: ManualApproval
+  displayName: Manual Validation
+  dependsOn: TerraformPlan
+  jobs:
+  - job: WaitForApproval
+    pool: server
+    steps:
+    - task: ManualValidation@1
+      inputs:
+        notifyUsers: "your-email@example.com"
+        instructions: "Please review Terraform plan and approve to continue deployment"
+
+
+# ================= CD STAGE =================
+- stage: TerraformApply
+  displayName: Terraform Apply
+  dependsOn: ManualApproval
+  jobs:
+  - job: ApplyJob
+    steps:
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 1.6.6
+
+    - download: current
+      artifact: terraform-plan
+
+    - task: TerraformTask@5
+      displayName: Terraform Init
+      inputs:
+        provider: azurerm
+        command: init
+        workingDirectory: "$(sourcePath)"
+        backendServiceArm: "$(serviceConnection)"
+        backendAzureRmResourceGroupName: "$(resourceGroup)"
+        backendAzureRmStorageAccountName: "$(storageAccount)"
+        backendAzureRmContainerName: "$(containerName)"
+        backendAzureRmKey: "$(stateFile)"
+
+
+    - script: terraform apply tfplan
+      workingDirectory: "$(sourcePath)"
+      displayName: Apply Terraform
