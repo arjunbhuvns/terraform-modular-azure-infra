@@ -1,3 +1,7 @@
+🚀 Terraform Azure Infrastructure (Key-Based Design)
+This project demonstrates a modular Terraform setup to provision end-to-end Azure infrastructure using key-based mapping and for_each.
+
+
 terraform-azure-infra/
 │
 ├── env/
