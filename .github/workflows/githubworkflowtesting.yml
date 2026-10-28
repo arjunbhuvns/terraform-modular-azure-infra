@@ -8,5 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ABCD
-        run: echo "Hello Friends"
+      - name: HashiCorp - Setup Terraform
+        uses: hashicorp/setup-terraform@v2.0.3
+      - name: TerraformInit
+        run: terraform init
