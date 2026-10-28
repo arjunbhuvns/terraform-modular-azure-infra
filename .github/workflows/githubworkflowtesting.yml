@@ -1,0 +1,18 @@
+name: Terrform-CI-Pipeline
+
+
+on:
+  workflow_dispatch:
+
+
+jobs:
+    TerraformCIJob:
+
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+        - name: ABCD
+          run: echo "Hello Friends"
+      
+      
